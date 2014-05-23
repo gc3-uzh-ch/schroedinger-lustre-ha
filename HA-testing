@@ -1,0 +1,194 @@
+HA-testing
+==========
+
+Primitives for filesystem
+-------------------------
+
+::
+
+	primitive mgt Filesystem \
+	params device="/dev/mapper/ha_volp4" directory="/srv/lustre/mgt" fstype=lustre \
+	meta target-role=Stopped \
+	operations $id="mgt-operations" \
+	op monitor interval=120 timeout=60 \
+	op start interval=0 timeout=300 \
+	op stop interval=0 timeout=300
+
+
+      > RM: can we spell it out explicitly as `ocf:heartbeat:Filesystem` ?
+      > fdg: I think
+      
+    [...]
+
+	property cib-bootstrap-options: \
+			dc-version=1.1.11-b434fee \
+			cluster-infrastructure=corosync \
+			stonith-enabled=false
+
+      > RM: Is `dc-version` advised here? Will it make harm if pacemaker is upgraded?
+      > fdg: I didn't set anything on cib-bootstrap-options apart from stonith-enabled
+      
+
+STONITH
+-------
+
+In /root/rpmbuild/x86_64 on lustre-test1
+    - cluster-glue-1.0.12-0.rc1.el6.x86_64.rpm
+    - cluster-glue-libs-1.0.12-0.rc1.el6.x86_64.rpm
+
+::
+    
+    yum localinstall cluster-glue-1.0.12-0.rc1.el6.x86_64.rpm cluster-glue-libs-1.0.12-0.rc1.el6.x86_64.rpm
+
+
+fence-agents
+------------
+
+You need the package fence-agents, otherwise pacemaker will list just fence_pcmk and fence_legacy (crm ra list stonith)
+resolved with: http://lists.linux-ha.org/pipermail/linux-ha/2012-October/045839.html .
+
+::
+
+    yum install fence-agents
+
+    # crm ra list stonith
+    fence_ack_manual          fence_apc                 fence_apc_snmp            fence_bladecenter         fence_bladecenter_snmp    fence_brocade             fence_cisco_mds
+    fence_cisco_ucs           fence_drac                fence_drac5               fence_eaton_snmp          fence_egenera             fence_eps                 fence_hpblade
+    fence_ibmblade            fence_idrac               fence_ifmib               fence_ilo                 fence_ilo2                fence_ilo3                fence_ilo4
+    fence_ilo_mp              fence_imm                 fence_intelmodular        fence_ipdu                fence_ipmilan             fence_kdump               fence_kdump_send
+    fence_legacy              fence_nss_wrapper         fence_pcmk                fence_rhevm               fence_rsa                 fence_rsb                 fence_sanbox2
+    fence_scsi                fence_virsh               fence_vmware              fence_vmware_helper       fence_vmware_soap         fence_wti
+
+
+Primitive for stonith
+---------------------
+
+Stonith and locations for stonith primitives.
+
+::
+
+    primitive stonith-lustre-test1 stonith:fence_ipmilan \
+	    params pcmk_host_list="lustre-test1" pcmk_host_check="static-list" \
+	    ipaddr="10.128.70.30" login="root" passwd="changeme!now" \
+	    verbose="true" lanplus="true" power_wait="4" \
+	    op monitor interval="60s"
+
+    location lc-stonith-lustre-test1 stonith-lustre-test1 -inf: lustre-test1
+
+    primitive stonith-lustre-test2 stonith:fence_ipmilan \
+    	params pcmk_host_list="lustre-test2" pcmk_host_check="static-list" \
+    	ipaddr="10.128.70.31" login="root" passwd="changeme!now" \
+    	verbose="true" lanplus="true" power_wait="4" \
+    	op monitor interval="60s"
+
+    location lc-stonith-lustre-test2 stonith-lustre-test2 -inf: lustre-test2
+
+Testing stonith
+---------------
+
+First test didn't work, because of no no-quorum-policy property
+Then:
+
+::
+
+    crm configure property  no-quorum-policy=ignore
+
+service network restart on lustre-test2 -> lustre-test1 correctly fenced lustre-test2, and failover its resources
+
+  > RM: "no-quorum-policy" is needed for 2-node clusters; for a larger cluster, we definitely want quorum!!
+  > fdg: sure, I set expected_votes=10 for quorum in /etc/corosync/corosync.conf 
+    
+
+Infiniband checks
+-----------------
+
+For info:
+
+::
+
+    crm ra info ocf:heartbeat:ethmonitor
+
+Definitions
+
+::
+
+    primitive NIC_CHECK_IB ethmonitor \
+    	params interface=ib0 name=NIC_CHECK_IB \
+    	op monitor interval=5s timeout=60s \
+    	op start interval=0 timeout=60s \
+    	op stop interval=0	
+
+        > RM: I like to call the primitive "prototype-ib0-up" and then call the clone "ib0-up", since it's the clone what we are really going to use in dependencies
+        > fdg: You will not use the name "ib0-up" in location constraint: you will use the name of the primitive.
+
+    clone NIC_CHECK_IB_CLONE NIC_CHECK_IB \
+    	meta globally-unique=false
+
+        > RM: I'd also add `meta clone-node-max=1`; it should be the default, but to be sure...
+        > yes, it's the default, but let's put it, it's informative
+
+	location cli-prefer-mdt mdt \
+			rule $id="mdt_on_test1" inf: #uname eq lustre-test1 \
+			rule $id="mdt_only_on_ib" -inf: not_defined NIC_CHECK_IB or NIC_CHECK_IB lte 0
+	location cli-prefer-mgt mgt \
+			rule $id="mgt_on_test2" inf: #uname eq lustre-test2 \
+			rule $id="mgt_only_on_ib" -inf: not_defined NIC_CHECK_IB or NIC_CHECK_IB lte 0
+	location cli-prefer-ost1 ost1 \
+			rule $id="ost1_on_test1" inf: #uname eq lustre-test1 \
+			rule $id="ost1_only_on_ib" -inf: not_defined NIC_CHECK_IB or NIC_CHECK_IB lte 0
+	location cli-prefer-ost2 ost2 \
+			rule $id="ost2_on_test2" inf: #uname eq lustre-test2 \
+			rule $id="ost2_only_on_ib" -inf: not_defined NIC_CHECK_IB or NIC_CHECK_IB lte 0
+ 
+        > RM: what's "cli-" in the rule names here?
+        > fdg: I don't know. When, for some reason, you need to manually migrate a resource, with this command line
+            "crm resource migrate ost2 lustre-test2",
+            pacemaker will add a constraint location with that name, "cli-prefer-ost2", in the configuration.
+            So the name remained in mine conf, but we will change it. (probably cli- means that you run the cmd from the cli).
+        
+             
+        
+
+Set up redundant ring for corosync
+----------------------------------
+
+Redundant ring in corosync.conf.
+From: http://docs.openstack.org/high-availability-guide/content/_setting_up_corosync.html
+    
+Remember to set: rrp_mode: active
+    
+::
+    
+    
+    	interface {
+                ringnumber: 1
+                bindnetaddr: 10.130.0.0
+                mcastaddr: 239.255.1.2
+                
+                    > RM: watch out for multicast address collisions at layer 2; this is well explained in chapter 1 of "Pacemaker Clusters from Scratch" 
+                
+                mcastport: 5405
+                ttl: 1
+        }
+
+
+Unmanaged mode
+--------------
+
+How to set an unmanaged mode:
+
+::
+
+    crm configure property maintenance-mode=true
+
+TODO
+----
+
+- Stonith default action? Reboot. Correct?
+
+    > RM: **NO** default action must be "off" -- reboots only happen under sysadmin surveillance
+    > fdg: I didn't explain very well. Default action IS reboot for RA stonith:fence_ipmilan (crm ra info stonith:fence_ipmilan).
+        But I agree on the power off method.
+
+- filesystem check level? look at ocf_check_level=10
+    - crm ra info ocf:heartbeat:filesystem
