@@ -1,0 +1,67 @@
+HA tests
+========
+
+Single host failures
+--------------------
+
+- FC
+    - unlink first cable
+        - check
+    - unlink second one
+        - behaviour ?
+
+- IB
+    - unlink cable
+        - behaviour ?
+    - block ICMP
+        - behaviour ?
+    - unlink cable + service rdma stop, if needed?
+        - behaviour ?
+        
+- ethernet (do we have another interface available on hosts, and ports on switch?)
+    - unlink cable
+    - what if eth0.617 is not available?
+        - op monitor on-fail=fence  on the stonith primitive?
+
+
+Multiple hosts failure
+----------------------
+
+- what if both the mds are down?
+    - do we need another check on pacemaker?
+- what about the quorum? if 5 hosts are down?
+    - behaviour? 
+
+
+
+Tests on lustre-test{1,2}
+-------------------------
+
+test HA
+	- unlink first SAS, ok
+	- unlink second SAS
+		- fail of filesystem monitoring
+		- trying to stop target on failing node
+		- timeout on stop operation -> FENCING
+	
+	- when machine reboots, still SAS unlinked
+		- node resources unmounted
+		- trying to start target
+		
+		
+	- ib test
+		- physically unlink ib0
+			- migration OK
+			- failback OK when relink
+		- ifdown ib0
+			- migration OK
+			- failback OK when ifup
+		- why no stonith?
+			- timeout need to be less then repeat_count * repeat_interval ?
+		
+	
+	
+I/O while failovering
+
+
+    
