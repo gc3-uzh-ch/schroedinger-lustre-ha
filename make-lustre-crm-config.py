@@ -114,7 +114,7 @@ def configure_stonith_location(target, killer):
     for node in ALL_NODES:
         if node == killer:
             location += ("  rule $id=stonith-%(target)s-on-%(killer)s 1000: #uname eq %(killer)s.ften.es.hpcn.uzh.ch \\" + '\n') % locals()
-        else:  
+        else:
             location += ("  rule $id=stonith-%(target)s-not-on-%(node)s -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\" + '\n') % locals()
     return location[:-2]+'\n'
 for pair in pairs:
@@ -131,7 +131,7 @@ primitive ib0_up ethmonitor \
   op monitor interval=5s timeout=60s \
   op start interval=0 timeout=60s \
   op stop interval=0
- 
+
 clone ib0_up_clone ib0_up \
   meta globally-unique=false ordered=false notify=false interleave=true clone-node-max=1
 """)
@@ -142,13 +142,13 @@ print(r"""
 # the MDSes and a few compute nodes (one per
 # rack and chassis); this makes a total of 26
 # pinged nodes
-# 
+#
 primitive ping ocf:pacemaker:ping \
     params name=ping dampen=5s multiplier=10 host_list="%s" \
     op start timeout=120 \
     op monitor timeout=60 interval=10 \
     op stop timeout=20
-    
+
 clone ping_clone ping \
     meta globally-unique=false clone-node-max=1
     """ % str.join(' ', [('ib%s' % name)
@@ -199,11 +199,11 @@ for name, params in sorted(RESOURCES.items()):
 for name, params in sorted(RESOURCES.items()):
     print("""colocation %(name)s-with-ib INFINITY: %(name)s-ldiskfs ib0_up_clone""" % params)
     print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s-ldiskfs""" % params)
-    
+
 # mouting Lustre targets must be serialized on a single host
 print("""
 #
-# Serialize mounting of Lustre targets, 
+# Serialize mounting of Lustre targets,
 # see: https://jira.hpdd.intel.com/browse/LU-1279
 #
 """)
@@ -231,8 +231,8 @@ for name, params in sorted(RESOURCES.items()):
 # ensure STONITH is enabled
 print ("""
 property cib-bootstrap-options: \\
-	stonith-enabled=false \\
-	stonith-action=poweroff \\
+        stonith-enabled=false \\
+        stonith-action=poweroff \\
         maintenance-mode=true
 """)
 
