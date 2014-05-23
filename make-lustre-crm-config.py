@@ -200,6 +200,26 @@ for name, params in sorted(RESOURCES.items()):
     print("""colocation %(name)s-with-ib INFINITY: %(name)s-ldiskfs ib0_up_clone""" % params)
     print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s-ldiskfs""" % params)
     
+# mouting Lustre targets must be serialized on a single host
+print("""
+#
+# Serialize mounting of Lustre targets, 
+# see: https://jira.hpdd.intel.com/browse/LU-1279
+#
+""")
+targets_by_node_pair = { }
+for name, params in RESOURCES.items():
+    pair = frozenset([ params['primary'], params['secondary'] ])
+    if pair in targets_by_node_pair:
+        targets_by_node_pair[pair].append('%(name)s-ldiskfs' % params)
+    else:
+        targets_by_node_pair[pair] = [ ('%(name)s-ldiskfs' % params) ]
+for pair, targets in targets_by_node_pair.items():
+    if len(targets) > 1:
+        print("""order serialize_targets_on_%s Serialize: %s""" 
+              % (str.join('-and-', sorted(pair)), 
+                 str.join(' ', sorted(targets))))
+
 # Lustre requires some global start/stop ordering
 print("""
 order mdt_after_mgt Serialize: mgt-ldiskfs mdt-ldiskfs
