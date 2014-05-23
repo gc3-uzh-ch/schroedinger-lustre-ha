@@ -214,11 +214,11 @@ for name, params in RESOURCES.items():
         targets_by_node_pair[pair].append('%(name)s-ldiskfs' % params)
     else:
         targets_by_node_pair[pair] = [ ('%(name)s-ldiskfs' % params) ]
-for pair, targets in targets_by_node_pair.items():
+for pair, targets in sorted(targets_by_node_pair.items()):
     if len(targets) > 1:
-        print("""order serialize_targets_on_%s Serialize: %s""" 
-              % (str.join('-and-', sorted(pair)), 
-                 str.join(' ', sorted(targets))))
+        print("""order serialize_targets_on_%s Serialize: %s"""
+              % (str.join('-and-', sorted(pair)),
+                 str.join(' ', reversed(sorted(targets)))))
 
 # Lustre requires some global start/stop ordering
 print("""
