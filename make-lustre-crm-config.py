@@ -167,7 +167,7 @@ for name, params in sorted(RESOURCES.items()):
 # and that a filesystem is mounted. We use it to manage
 # the Lustre OSTs.
 #
-primitive %(name)s-ldiskfs ocf:heartbeat:Filesystem \
+primitive %(name)s ocf:heartbeat:Filesystem \
   params device="%(device)s" directory="%(mountpoint)s" fstype="lustre" \
   operations $id="%(name)s-operations" \
   op monitor interval=120 timeout=60 OCF_CHECK_LEVEL=10 \
@@ -182,7 +182,7 @@ print("""
 #
 """)
 for name, params in sorted(RESOURCES.items()):
-    location_rule = ('location %(name)s-location %(name)s-ldiskfs \\' + '\n') % params
+    location_rule = ('location %(name)s-location %(name)s \\' + '\n') % params
     for node in ALL_NODES:
         params['node'] = node
         params['role'] = node[len('lustre-'):]
@@ -197,8 +197,8 @@ for name, params in sorted(RESOURCES.items()):
 
 # ensure co-location and start/stop ordering
 for name, params in sorted(RESOURCES.items()):
-    print("""colocation %(name)s-with-ib INFINITY: %(name)s-ldiskfs ib0_up_clone""" % params)
-    print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s-ldiskfs""" % params)
+    print("""colocation %(name)s-with-ib INFINITY: %(name)s ib0_up_clone""" % params)
+    print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s""" % params)
 
 # mouting Lustre targets must be serialized on a single host
 print("""
@@ -211,9 +211,9 @@ targets_by_node_pair = { }
 for name, params in RESOURCES.items():
     pair = frozenset([ params['primary'], params['secondary'] ])
     if pair in targets_by_node_pair:
-        targets_by_node_pair[pair].append('%(name)s-ldiskfs' % params)
+        targets_by_node_pair[pair].append('%(name)s' % params)
     else:
-        targets_by_node_pair[pair] = [ ('%(name)s-ldiskfs' % params) ]
+        targets_by_node_pair[pair] = [ ('%(name)s' % params) ]
 for pair, targets in sorted(targets_by_node_pair.items()):
     if len(targets) > 1:
         print("""order serialize_targets_on_%s Serialize: %s symmetrical=false"""
@@ -222,11 +222,11 @@ for pair, targets in sorted(targets_by_node_pair.items()):
 
 # Lustre requires some global start/stop ordering
 print("""
-order mdt_after_mgt Mandatory: mgt-ldiskfs mdt-ldiskfs
+order mdt_after_mgt Mandatory: mgt mdt
 """ % ())
 for name, params in sorted(RESOURCES.items()):
     if name not in ['mdt', 'mgt']:
-        print("order %(name)s_after_mdt Mandatory: mdt-ldiskfs %(name)s-ldiskfs" % params)
+        print("order %(name)s_after_mdt Mandatory: mdt %(name)s" % params)
 
 # ensure STONITH is enabled
 print (r"""
