@@ -14,10 +14,14 @@ Single host failures
 - IB
 
     - unlink cable
-        - behaviour ?
-
-    - service rdma stop
-        - behaviour ?
+        - resources are migrated correctly on pair node. After
+          re-connecting the cable, the resource is NOT migrated back
+          automatically.
+       
+    - disable IB port
+        - resources are migrated correctly on pair node. After
+          re-connecting the cable, the resource is NOT migrated back
+          automatically.
 
     - block ICMP
         - behaviour ?
@@ -25,10 +29,24 @@ Single host failures
       > RM: I think this test can be safely skipped!
 
         
-- ethernet (do we have another interface available on hosts, and ports on switch?)
+- oss2 ethernet (do we have another interface available on hosts, and ports on switch?)
     - unlink cable
+      - Apparently, this cause corosync communication to stop (even
+        though they should talk on the IB channel), and all resources
+        to be blocked. resources are stopped on the "dead" node, but
+        not migrated to other resources.
+      - replacing the cable, something strange happens: resources are
+        first mounted on oss1 (the pair resource), and *then* migrated
+        to oss2 (the "dead" node).
+
     - what if eth0.617 is not available?
         - op monitor on-fail=fence  on the stonith primitive?
+
+- mds2 ethernet (do we have another interface available on hosts, and ports on switch?)
+    - unlink cable
+      - ping fails because the machine cannot resolve ib* hostnames,
+        and mgt is moved to mds1
+
 
 
 Multiple hosts failure
