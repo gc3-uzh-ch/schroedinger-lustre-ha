@@ -45,7 +45,7 @@ for n, primary, secondary, swap in izip(
         cycle([False]*4 + [True]*4)): # F,F,F,F,T,... (-> swap)
     if swap:
         primary, secondary = secondary, primary
-    RESOURCES['ost%d' % n] = {
+    RESOURCES['ost%02d' % n] = {
         'device':     ('/dev/mapper/ost%02d' % n),
         'mountpoint': ('/srv/lustre/ost/%d' % n),
         'primary':    ('lustre-oss%d' % primary),
