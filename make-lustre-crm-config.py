@@ -222,7 +222,7 @@ for pair, targets in sorted(targets_by_node_pair.items()):
 
 # Lustre requires some global start/stop ordering
 print("""
-order mdt_after_mgt Serialize: mgt-ldiskfs mdt-ldiskfs
+order mdt_after_mgt Mandatory: mgt-ldiskfs mdt-ldiskfs
 """ % ())
 for name, params in sorted(RESOURCES.items()):
     if name not in ['mdt', 'mgt']:
