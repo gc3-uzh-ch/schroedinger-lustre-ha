@@ -71,15 +71,15 @@ for name, params in RESOURCES.iteritems():
 #    print("node %s.ften.es.hpcn.uzh.ch" % node)
 
 # set global defaults
-print("""
+print(r"""
 #
 # Set default resource "stickiness",
 # so that Lustre targets won't move
 # to another server unless there is
 # a sysadmin watching.
 #
-rsc_defaults rsc-options: \\
-        resource-stickiness=2000
+rsc_defaults rsc-options: \
+  resource-stickiness=2000
 """)
 
 # set up STONITH
@@ -229,11 +229,11 @@ for name, params in sorted(RESOURCES.items()):
         print("order %(name)s_after_mdt Mandatory: mdt-ldiskfs %(name)s-ldiskfs" % params)
 
 # ensure STONITH is enabled
-print ("""
-property cib-bootstrap-options: \\
-        stonith-enabled=false \\
-        stonith-action=poweroff \\
-        maintenance-mode=true
+print (r"""
+property cib-bootstrap-options: \
+  stonith-enabled=false \
+  stonith-action=poweroff \
+  maintenance-mode=true
 """)
 
 
