@@ -10,13 +10,20 @@ Single host failures
     - unlink second one
         - behaviour ?
 
+
 - IB
+
     - unlink cable
         - behaviour ?
+
+    - service rdma stop
+        - behaviour ?
+
     - block ICMP
         - behaviour ?
-    - unlink cable + service rdma stop, if needed?
-        - behaviour ?
+
+      > RM: I think this test can be safely skipped!
+
         
 - ethernet (do we have another interface available on hosts, and ports on switch?)
     - unlink cable
@@ -27,8 +34,13 @@ Single host failures
 Multiple hosts failure
 ----------------------
 
+> RM: In both these cases, I think the Lustre storage cluster should
+> be down.  At any rate, these are failure modes that cannot be served
+> by our current HW configuration!
+
 - what if both the mds are down?
     - do we need another check on pacemaker?
+
 - what about the quorum? if 5 hosts are down?
     - behaviour? 
 
@@ -62,6 +74,15 @@ test HA
 	
 	
 I/O while failovering
+---------------------
 
 
-    
+No failures (maintenance use cases)
+-----------------------------------
+
+- Tell CRM to migrate services (expect: services migrate)
+
+- Clean shutdown of a host (expect: services migrate)
+
+- Stop CRM on node (expect: services migrate)
+
