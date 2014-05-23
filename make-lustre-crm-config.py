@@ -99,6 +99,14 @@ primitive stonith-%(node)s stonith:fence_ipmilan \
     op monitor interval=60s
 """ % dict(node=node))
 
+
+# TODO?: (RM) Since we are using IMPI over a LAN to do the poweroff, this
+# STONITH location constraints are useless at best and harmful at
+# worst. I'd replace them with:
+# - an `ethmonitor` RA to check availability of the IPMI LAN
+# - location-dependence of the STONITH on the IPMI LAN interface (eth0.617)
+# - an anti-location rule that forbids a node to be its own killer
+#
 print("""
 #
 # Hosts are organized in pairs; for each node, constrain the STONITH services to run on the peer node
