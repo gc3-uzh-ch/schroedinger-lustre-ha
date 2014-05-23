@@ -216,7 +216,7 @@ for name, params in RESOURCES.items():
         targets_by_node_pair[pair] = [ ('%(name)s-ldiskfs' % params) ]
 for pair, targets in sorted(targets_by_node_pair.items()):
     if len(targets) > 1:
-        print("""order serialize_targets_on_%s Serialize: %s"""
+        print("""order serialize_targets_on_%s Serialize: %s symmetrical=false"""
               % (str.join('-and-', sorted(pair)),
                  str.join(' ', reversed(sorted(targets)))))
 
