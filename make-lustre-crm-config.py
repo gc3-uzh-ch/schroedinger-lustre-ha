@@ -8,10 +8,27 @@ Load the output of this script with `crm configure -f`.
 
 ## imports
 
+from collections import namedtuple
 from itertools import izip, chain, cycle, repeat
 
 
 ## CONFIGURATION
+
+Host = namedtuple('Host', ['uname', 'fqdn', 'ipmi_addr'])
+
+# we need this as the hostname->IP map does not follow any simple rule
+HOSTS = {
+    'lustre-mds1': Host('lustre-mds1', 'lustre-mds1.ften.es.hpcn.uzh.ch', '10.128.93.10'),
+    'lustre-mds2': Host('lustre-mds2', 'lustre-mds2.ften.es.hpcn.uzh.ch', '10.128.93.11'),
+    'lustre-oss1': Host('lustre-oss1', 'lustre-oss1.ften.es.hpcn.uzh.ch', '10.128.93.14'),
+    'lustre-oss2': Host('lustre-oss2', 'lustre-oss2.ften.es.hpcn.uzh.ch', '10.128.93.15'),
+    'lustre-oss3': Host('lustre-oss3', 'lustre-oss3.ften.es.hpcn.uzh.ch', '10.128.93.18'),
+    'lustre-oss4': Host('lustre-oss4', 'lustre-oss4.ften.es.hpcn.uzh.ch', '10.128.93.19'),
+    'lustre-oss5': Host('lustre-oss5', 'lustre-oss5.ften.es.hpcn.uzh.ch', '10.128.93.22'),
+    'lustre-oss6': Host('lustre-oss6', 'lustre-oss6.ften.es.hpcn.uzh.ch', '10.128.93.23'),
+    'lustre-oss7': Host('lustre-oss7', 'lustre-oss7.ften.es.hpcn.uzh.ch', '10.128.93.26'),
+    'lustre-oss8': Host('lustre-oss8', 'lustre-oss8.ften.es.hpcn.uzh.ch', '10.128.93.27'),
+}
 
 RESOURCES = {
     # name -> { params }
@@ -103,8 +120,8 @@ primitive stonith-%(node)s @stonith-template \
   params \
     pcmk_host_check=static-list \
     pcmk_host_list=%(node)s \
-    ipaddr="sc%(node)s.mngt.es.hpcn.uzh.ch"
-""" % dict(node=node))
+    ipaddr="%(ipmi_addr)s"
+    """ % dict(node=node, ipmi_addr=HOSTS[node].ipmi_addr))
 
 
 # TODO?: (RM) Since we are using IMPI over a LAN to do the poweroff, this
@@ -176,7 +193,7 @@ clone ping_clone ping \
 
 
 # define filesystems
-    print(r"""
+print(r"""
 #
 # The `Filesystem` RA checks that a device is readable
 # and that a filesystem is mounted. We use it to manage
