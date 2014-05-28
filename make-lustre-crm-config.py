@@ -45,6 +45,16 @@ RESOURCES = {
             'secondary':  'lustre-mds2',
         },
 }
+
+
+IB_HOSTS_TO_PING={
+	'10.130.11.31', '10.130.12.42', '10.130.13.51', '10.130.14.62', '10.130.21.42', 
+	'10.130.22.51', '10.130.23.62', '10.130.24.71', '10.130.31.51', '10.130.32.62', 
+	'10.130.33.71', '10.130.34.82', '10.130.61.82', '10.130.62.91', '10.130.63.102', 
+	'10.130.64.111', '10.130.71.91', '10.130.72.102', '10.130.73.111', '10.130.74.122', 
+	'10.130.81.102', '10.130.82.111', '10.130.83.122', '10.130.84.11', '10.130.93.10', 
+	'10.130.93.11'
+}
 # OSTs are placed on OSS pairs in a round-robin fashion:
 # - OST0 is on OSS1 and OSS2;
 # - OST1 is on OSS3 and OSS4;
@@ -183,13 +193,7 @@ primitive ping ocf:pacemaker:ping \
 
 clone ping_clone ping \
     meta globally-unique=false clone-node-max=1
-    """ % str.join(' ', [('ib%s' % name)
-        for name in set.union(MDS_NODES, set([
-            # ((rack+chassis) % p) seems to give a good distribution of values mod p
-            ('r%02dc%02db%02dn%02d' % (rack, chassis, 1+((rack+chassis) % 12), 1 + ((rack+chassis) % 2)))
-            for rack in [1,2,3,6,7,8]
-            for chassis in [1,2,3,4]
-    ]))]))
+    """ % str.join(' ', [ ibhost for ibhost in IB_HOSTS_TO_PING ] ))
 
 
 # define filesystems
