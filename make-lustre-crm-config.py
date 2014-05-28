@@ -87,16 +87,23 @@ print("""
 #
 # For each host, define how we STONITH that host.
 #
+rsc_template stonith-template stonith:fence_ipmilan \
+  params \
+    pcmk_host_check=static-list \
+    pcmk_host_list="invalid" \
+    ipaddr="invalid" \
+    action=off \
+    login=root passwd_script="/var/lib/pacemaker/ipmi_passwd.sh" \
+    verbose=true lanplus=true \
+    op monitor interval=60s
 """)
 for node in ALL_NODES:
     print(r"""
-primitive stonith-%(node)s stonith:fence_ipmilan \
+primitive stonith-%(node)s @stonith-template \
   params \
-    pcmk_host_list=%(node)s pcmk_host_check=static-list \
-    ipaddr="sc%(node)s.mngt.es.hpcn.uzh.ch" \
-    login=root passwd_script="/var/lib/pacemaker/ipmi_passwd.sh" \
-    verbose=true lanplus=true action=off \
-    op monitor interval=60s
+    pcmk_host_check=static-list \
+    pcmk_host_list=%(node)s \
+    ipaddr="sc%(node)s.mngt.es.hpcn.uzh.ch"
 """ % dict(node=node))
 
 
@@ -167,20 +174,24 @@ clone ping_clone ping \
             for chassis in [1,2,3,4]
     ]))]))
 
+
 # define filesystems
-for name, params in sorted(RESOURCES.items()):
     print(r"""
 #
 # The `Filesystem` RA checks that a device is readable
 # and that a filesystem is mounted. We use it to manage
 # the Lustre OSTs.
 #
-primitive %(name)s ocf:heartbeat:Filesystem \
-  params device="%(device)s" directory="%(mountpoint)s" fstype="lustre" \
-  operations $id="%(name)s-operations" \
+rsc_template lustre-target-template ocf:heartbeat:Filesystem \
+  operations $id="lustre-target-template-operations" \
   op monitor interval=120 timeout=60 OCF_CHECK_LEVEL=10 \
   op start   interval=0   timeout=300 \
   op stop    interval=0   timeout=300
+""")
+for name, params in sorted(RESOURCES.items()):
+    print(r"""
+primitive %(name)s @lustre-target-template \
+  params device="%(device)s" directory="%(mountpoint)s" fstype="lustre"
 """ % params)
 
 # resource location
@@ -204,6 +215,13 @@ for name, params in sorted(RESOURCES.items()):
     print(location_rule)
 
 # ensure co-location and start/stop ordering
+print("""
+#
+# Co-locate Lustre targets with a working Infiniband connectivity,
+# and set order constraints so that Lustre targets are only
+# started *after* IB is up.
+#
+""")
 for name, params in sorted(RESOURCES.items()):
     print("""colocation %(name)s-with-ib INFINITY: %(name)s ib0_up_clone""" % params)
     print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s""" % params)
