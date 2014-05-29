@@ -47,14 +47,14 @@ RESOURCES = {
 }
 
 
-IB_HOSTS_TO_PING={
+IB_HOSTS_TO_PING=[
 	'10.130.11.31', '10.130.12.42', '10.130.13.51', '10.130.14.62', '10.130.21.42', 
 	'10.130.22.51', '10.130.23.62', '10.130.24.71', '10.130.31.51', '10.130.32.62', 
 	'10.130.33.71', '10.130.34.82', '10.130.61.82', '10.130.62.91', '10.130.63.102', 
 	'10.130.64.111', '10.130.71.91', '10.130.72.102', '10.130.73.111', '10.130.74.122', 
 	'10.130.81.102', '10.130.82.111', '10.130.83.122', '10.130.84.11', '10.130.93.10', 
 	'10.130.93.11'
-}
+]
 # OSTs are placed on OSS pairs in a round-robin fashion:
 # - OST0 is on OSS1 and OSS2;
 # - OST1 is on OSS3 and OSS4;
@@ -129,7 +129,7 @@ for node in ALL_NODES:
 primitive stonith-%(node)s @stonith-template \
   params \
     pcmk_host_check=static-list \
-    pcmk_host_list=%(node)s \
+    pcmk_host_list=%(node)s.ften.es.hpcn.uzh.ch \
     ipaddr="%(ipmi_addr)s"
     """ % dict(node=node, ipmi_addr=HOSTS[node].ipmi_addr))
 
@@ -188,7 +188,7 @@ print(r"""
 primitive ping ocf:pacemaker:ping \
     params name=ping dampen=5s multiplier=10 host_list="%s" \
     op start timeout=120 \
-    op monitor timeout=60 interval=10 \
+    op monitor timeout=120 interval=10 \
     op stop timeout=20
 
 clone ping_clone ping \
