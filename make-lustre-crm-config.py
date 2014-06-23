@@ -269,11 +269,11 @@ for pair, targets in sorted(targets_by_node_pair.items()):
 
 # Lustre requires some global start/stop ordering
 print("""
-order mdt_after_mgt Mandatory: mgt mdt
+order mdt_after_mgt Optional: mgt mdt
 """ % ())
 for name, params in sorted(RESOURCES.items()):
     if name not in ['mdt', 'mgt']:
-        print("order %(name)s_after_mdt Mandatory: mdt %(name)s" % params)
+        print("order %(name)s_after_mdt Optional: mdt %(name)s" % params)
 
 
 print (r"""
