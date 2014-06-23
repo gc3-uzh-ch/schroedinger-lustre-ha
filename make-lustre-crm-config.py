@@ -275,6 +275,15 @@ for name, params in sorted(RESOURCES.items()):
     if name not in ['mdt', 'mgt']:
         print("order %(name)s_after_mdt Mandatory: mdt %(name)s" % params)
 
+
+print (r"""
+primitive mail MailTo \
+        params email="root@localhost" subject="Lustre"
+clone mail_clone mail \
+        meta globally-unique=false
+""")
+
+
 # ensure STONITH is enabled
 print (r"""
 property cib-bootstrap-options: \
