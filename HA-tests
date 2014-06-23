@@ -1,32 +1,78 @@
 HA tests
 ========
 
+Schroedinger maintenance, 25 june 2014
+--------------------------------------
+
+Since
+- STONITH was disabled so far
+- `ping` primitive was not working properly
+- we need to test if the following Infiniband ethmonitor timeout is working properly
+	- short answer: no, I think timeout should be less than interval * repeat_count, where the default for repeat_count is 5
+
+	::
+	
+		primitive ib0_up ethmonitor \
+				params interface=ib0 name=ib0_up \
+				op monitor interval=5s timeout=60s \
+				   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+				op start interval=0 timeout=60s \
+				op stop interval=0	
+
+
+I propose to re-do all the tests we did during last maintenance.
+
+TO-DO tests
+^^^^^^^^^^^
+
+**Expected behaviour definition**: *resources are migrated correctly on partner node. After re-connecting the cable, the resource is NOT migrated back automatically*.
+
+
+Single host failures
+""""""""""""""""""""
+
+- FC
+	- unlink first cable
+		...
+	- unlink second cable
+		...
+		
+- IB
+	- unlink cable
+		...
+	- do we need to run again the disable IB port test (ibportstate)?
+		...
+		
+- ethernet
+	- unlink cable
+
+
+
+Tests already performed
+=======================
+
+Expected behaviour definition: *resources are migrated correctly on pair node. After re-connecting the cable, the resource is NOT migrated back automatically*.
+
 Single host failures
 --------------------
 
-- FC
-    - unlink first cable
-        - check
-    - unlink second one
-        - behaviour ?
+- FC (lustre-mds2, mgt target)
+	- unlink first cable
+		- behaviour: as expected
+	- unlink second one
+		- behaviour: as expected.
 
 
-- IB
+- IB (lustre-oss2)
 
     - unlink cable
-        - resources are migrated correctly on pair node. After
-          re-connecting the cable, the resource is NOT migrated back
-          automatically.
-       
+        - behaviour: as expected.
+
     - disable IB port
-        - resources are migrated correctly on pair node. After
-          re-connecting the cable, the resource is NOT migrated back
-          automatically.
+        - behaviour: as expected.
 
     - block ICMP
-        - behaviour ?
-
-      > RM: I think this test can be safely skipped!
+        - behaviour ? > RM: I think this test can be safely skipped!
 
         
 - oss2 ethernet (do we have another interface available on hosts, and ports on switch?)
@@ -37,16 +83,13 @@ Single host failures
         not migrated to other resources.
       - replacing the cable, something strange happens: resources are
         first mounted on oss1 (the pair resource), and *then* migrated
-        to oss2 (the "dead" node).
-
-    - what if eth0.617 is not available?
-        - op monitor on-fail=fence  on the stonith primitive?
-
-- mds2 ethernet (do we have another interface available on hosts, and ports on switch?)
+        to oss2 (the "dead" node) . Misbehaviour may be related to the ``ibportstate`` command.
+        
+- ethernet (lustre-mds2)
     - unlink cable
       - ping fails because the machine cannot resolve ib* hostnames,
-        and mgt is moved to mds1
-
+        and mgt is moved to lustre-mds1.
+    - expected behaviour: the resource should not migrate due to the presence of the second communication ring (if the ping resource is working).
 
 
 Multiple hosts failure
@@ -64,6 +107,58 @@ Multiple hosts failure
 
 
 
+Open points
+-----------
+
+* STONITH is still disabled on all servers
+
+* eth1 on servers is not used. We could:
+	- bond it with eth0 (do we have another port on switch?)
+	- link it to the IPMI LAN?
+
+* What if eth0.617 is not available?
+
+* InfiniBand behaviour	
+	- ethmonitor timeout
+		- looking at ``crm ra info ocf:heartbeat:ethmonitor``, the timeout should be `at least repeat_interval \* repeatcount`. But the default is 20 seconds.
+	- when InfiniBand is missing, do we want a failover caused by failure of ping or ethmonitor resource?
+		- adjust timeout as needed
+	- when InfiniBand is missing, what behaviour do we expect?
+		- do we need fencing?
+		
+* Quorum: we have ten nodes in the HA cluster
+	- at least N/2+1 nodes are needed to have quorum
+	- when 5 nodes can't vote, what's happening?
+	
+* What if both the MDS servers are missing?
+	- since we have a Mandatory orded (``order mdt_after_mgt Mandatory: mgt mdt``), a missing mgt should actually lead every Lustre target down
+
+* Why the ``interleave`` meta attribute in the ethmonitor clone for InfiniBand check?
+	- the interleave is needed `only when a master/slave set is configured <http://www.hastexo.com/resources/hints-and-kinks/interleaving-pacemaker-clones>`__
+	
+
+* Ping is failing when eth0 is missing (and then resource will migrate)
+	- change hostnames with ip addresses?
+	- name resolution handling
+	
+No failures (maintenance use cases)
+-----------------------------------
+
+- Set the HA cluster in *maintenance-mode*
+	``crm configure property maintenance-mode=true``
+
+- Tell CRM to migrate services (expect: services migrate)
+	use ``crm resource migrate [resource-name] [FQDN]`` to move the resource TO the FQDN.
+
+- Clean shutdown of a host (expect: services migrate)
+	I would not perform a node shutdown with Pacemaker running on that node. I would migrate the services, and then cleanly shut down the node.
+	If for any reason a node fails to move target to its partner, this last one will fence the node.
+
+- Stop CRM on node (expect: services migrate)
+	CRM is not a daemon: is the shell you use to interact with Pacemaker. You could stop ``corosync`` or ``pacemaker``.
+
+	
+	
 Tests on lustre-test{1,2}
 -------------------------
 
@@ -88,19 +183,5 @@ test HA
 			- failback OK when ifup
 		- why no stonith?
 			- timeout need to be less then repeat_count * repeat_interval ?
-		
-	
-	
-I/O while failovering
----------------------
 
-
-No failures (maintenance use cases)
------------------------------------
-
-- Tell CRM to migrate services (expect: services migrate)
-
-- Clean shutdown of a host (expect: services migrate)
-
-- Stop CRM on node (expect: services migrate)
 
