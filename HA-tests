@@ -25,26 +25,57 @@ I propose to re-do all the tests we did during last maintenance.
 TO-DO tests
 ^^^^^^^^^^^
 
-**Expected behaviour definition**: *resources are migrated correctly on partner node. After re-connecting the cable, the resource is NOT migrated back automatically*.
+
+Goal of the tests is:
+	- verify STONITH is working well
+	- verify ethmonitor on InfiniBand is working well (timeout issue)
+	- verify the expected behaviour when a node experiments a failure
+
+**Expected behaviour**: *resources (Lustre target) are migrated correctly on partner node. After re-connecting the cable, the resource is NOT migrated back automatically*.
+	
+
+To accomplish this we need:
+
+	to enable STONITH
+		- crm configure property stonith-enabled=true
+		- when STONITH is enabled, the default behaviour for a failing Pacemaker resource is fencing
+	if needed, modify the timeout value in the ethmonitor resource
+		- we need a timeout smaller than interval*repeat_count
+		- for instance ("...op monitor interval=10s timeout=50s...")
+
 
 
 Single host failures
 """"""""""""""""""""
 
+
 - FC
 	- unlink first cable
-		...
+		nothing must happen, multipath acknowledges the missing path
 	- unlink second cable
-		...
+		multipath acknowledges no path to volume
+		filesystem primitive acknowledges impossible I/O on disk (thanks to CHECK_OCF_LEVEL=10)
+		filesystem primitive fails
+		failing node is fenced (power off)
+		Pacemaker migrates Lustre target
 		
 - IB
 	- unlink cable
-		...
+		ethmonitor acknowledges missing link (before ping primitive)
+		ethmonitor fails
+		failing node is fenced (power off)
+		Pacemaker migrates Lustre target
+		
 	- do we need to run again the disable IB port test (ibportstate)?
 		...
 		
 - ethernet
 	- unlink cable
+		Pacemaker must continue operations thanks to redundant rings
+		STONITH resource cannot operate, so will fail?
+		node will be fenced? we don't need fence here.. just move resources?
+			to avoid this behaviour, we need to modify the default for the stop operation (no "on-fail=fence")
+		
 
 
 
