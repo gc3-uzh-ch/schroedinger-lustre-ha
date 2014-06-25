@@ -214,7 +214,6 @@ print(r"""
 # the Lustre OSTs.
 #
 rsc_template lustre-target-template ocf:heartbeat:Filesystem \
-  operations $id="lustre-target-template-operations" \
   op monitor interval=120 timeout=60 OCF_CHECK_LEVEL=10 \
   op start   interval=0   timeout=300 \
   op stop    interval=0   timeout=300
