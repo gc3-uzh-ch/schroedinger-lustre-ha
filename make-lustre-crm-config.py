@@ -109,6 +109,21 @@ rsc_defaults rsc-options: \
   resource-stickiness=2000
 """)
 
+
+print(r"""
+#
+# Provide a template for monitoring network interfaces.
+# An interface will be considered DOWN if it fails 3 checks
+# separated by a 10 interval.
+#
+rsc_template netmonitor-30sec ethmonitor \
+  params repeat_count=3 repeat_interval=10 \
+  op monitor interval=15s timeout=60s \
+  op start   interval=0s  timeout=60s \
+  op stop    interval=0s
+""")
+
+
 # set up STONITH
 print("""
 #
@@ -140,11 +155,8 @@ print(r"""
 # it provides access to the IPMI network,
 # which is used for STONITH
 #
-primitive ipmi_net_up ethmonitor \
-  params interface=eth0.617 name=ipmi_net_up \
-  op monitor interval=5s timeout=60s \
-  op start interval=0 timeout=60s \
-  op stop interval=0
+primitive ipmi_net_up @netmonitor-30sec \
+  params interface=eth0.617 name=ipmi_net_up
 
 clone ipmi_net_up_clone ipmi_net_up \
   meta globally-unique=false ordered=false notify=false interleave=true clone-node-max=1
@@ -169,11 +181,8 @@ print(r"""
 #
 # check that the `ib0` interface is up
 #
-primitive ib0_up ethmonitor \
-  params interface=ib0 name=ib0_up \
-  op monitor interval=5s timeout=60s \
-  op start interval=0 timeout=60s \
-  op stop interval=0
+primitive ib0_up @netmonitor-30sec \
+  params interface=ib0 name=ib0_up
 
 clone ib0_up_clone ib0_up \
   meta globally-unique=false ordered=false notify=false interleave=true clone-node-max=1
