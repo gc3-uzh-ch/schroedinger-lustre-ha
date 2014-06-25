@@ -134,35 +134,36 @@ primitive stonith-%(node)s @stonith-template \
     """ % dict(node=node, ipmi_addr=HOSTS[node].ipmi_addr))
 
 
-# TODO?: (RM) Since we are using IMPI over a LAN to do the poweroff, this
-# STONITH location constraints are useless at best and harmful at
-# worst. I'd replace them with:
-# - an `ethmonitor` RA to check availability of the IPMI LAN
-# - location-dependence of the STONITH on the IPMI LAN interface (eth0.617)
-# - an anti-location rule that forbids a node to be its own killer
+print(r"""
 #
+# check that the `eth0.617` interface is up;
+# it provides access to the IPMI network,
+# which is used for STONITH
+#
+primitive ipmi_net_up ethmonitor \
+  params interface=eth0.617 name=ipmi_net_up \
+  op monitor interval=5s timeout=60s \
+  op start interval=0 timeout=60s \
+  op stop interval=0
+
+clone ipmi_netup_clone ipmi_netup \
+  meta globally-unique=false ordered=false notify=false interleave=true clone-node-max=1
+""")
+
+
 print("""
 #
-# Hosts are organized in pairs; for each node, constrain the STONITH services to run on the peer node
+# A STONITH resource can run on any node that has access to the IPMI network.
+# However, avoid that a host is chosen as its own killer.
 #
 """)
-pairs = set()
-for name, params in RESOURCES.iteritems():
-    pair = frozenset([ params['primary'], params['secondary'] ])
-    pairs.add(pair)
-def configure_stonith_location(target, killer):
-    "Configure location contraints so that host `target` is STONITH'd by host `killer`"
-    location = ("location locate-stonith-%(target)s stonith-%(target)s \\" + '\n') % locals()
-    for node in ALL_NODES:
-        if node == killer:
-            location += ("  rule $id=stonith-%(target)s-on-%(killer)s 1000: #uname eq %(killer)s.ften.es.hpcn.uzh.ch \\" + '\n') % locals()
-        else:
-            location += ("  rule $id=stonith-%(target)s-not-on-%(node)s -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\" + '\n') % locals()
-    return location[:-2]+'\n'
-for pair in pairs:
-    one, other = pair
-    print (configure_stonith_location(one, other) + '\n')
-    print (configure_stonith_location(other, one) + '\n')
+for node in ALL_NODES:
+    print("""
+location locate-stonith-%(node)s stonith-%(node)s \\
+  rule $id=stonith-%(node)s-not-on-self -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch
+colocation stonith-%(node)s-with-ipmi INFINITY: stonith-%(node)s ipmi_net_up_clone
+    """ % locals())
+
 
 print(r"""
 #
