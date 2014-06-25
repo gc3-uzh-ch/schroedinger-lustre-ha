@@ -146,7 +146,7 @@ primitive ipmi_net_up ethmonitor \
   op start interval=0 timeout=60s \
   op stop interval=0
 
-clone ipmi_netup_clone ipmi_netup \
+clone ipmi_net_up_clone ipmi_net_up \
   meta globally-unique=false ordered=false notify=false interleave=true clone-node-max=1
 """)
 
