@@ -241,7 +241,7 @@ for name, params in sorted(RESOURCES.items()):
             location_rule += ('  rule $id="%(name)s_secondary_on_%(role)s" 100: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\' + '\n') % params
         else:
             location_rule += ('  rule $id="%(name)s_not_on_%(role)s" -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\' + '\n') % params
-    location_rule += ('  rule $id="%(name)s_only_if_ib0_up"     -INFINITY: ib0_up eq 0\n') % params
+    location_rule += ('  rule $id="%(name)s_only_if_ib0_up"     -INFINITY: ib0_up eq 0 \\' + '\n') % params
     location_rule += ('  rule $id="%(name)s_only_if_ping_works" -INFINITY: not_defined ping or ping number:lte 0\n') % params
     print(location_rule)
 
