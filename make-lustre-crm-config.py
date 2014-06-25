@@ -120,7 +120,7 @@ rsc_template stonith-template stonith:fence_ipmilan \
     pcmk_host_list="invalid" \
     ipaddr="invalid" \
     action=off \
-    login=root passwd_script="/var/lib/pacemaker/ipmi_passwd.sh" \
+    login=ADMIN passwd_script="/var/lib/pacemaker/ipmi_passwd.sh" \
     verbose=true lanplus=true \
     op monitor interval=60s
 """)
