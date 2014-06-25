@@ -172,8 +172,8 @@ print("""
 for node in ALL_NODES:
     print("""
 location locate-stonith-%(node)s stonith-%(node)s \\
-  rule $id=stonith-%(node)s-not-on-self -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch
-colocation stonith-%(node)s-with-ipmi INFINITY: stonith-%(node)s ipmi_net_up_clone
+  rule $id=stonith-%(node)s-not-on-self -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\
+  rule $id=stonith-%(node)s-with-ipmi   -INFINITY: ipmi_net_up eq 0
     """ % locals())
 
 
@@ -242,19 +242,18 @@ for name, params in sorted(RESOURCES.items()):
             location_rule += ('  rule $id="%(name)s_secondary_on_%(role)s" 100: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\' + '\n') % params
         else:
             location_rule += ('  rule $id="%(name)s_not_on_%(role)s" -INFINITY: #uname eq %(node)s.ften.es.hpcn.uzh.ch \\' + '\n') % params
+    location_rule += ('  rule $id="%(name)s_only_if_ib0_up"     -INFINITY: ib0_up eq 0\n') % params
     location_rule += ('  rule $id="%(name)s_only_if_ping_works" -INFINITY: not_defined ping or ping number:lte 0\n') % params
     print(location_rule)
 
-# ensure co-location and start/stop ordering
+# ensure start/stop ordering
 print("""
 #
-# Co-locate Lustre targets with a working Infiniband connectivity,
-# and set order constraints so that Lustre targets are only
+# Set order constraints so that Lustre targets are only
 # started *after* IB is up.
 #
 """)
 for name, params in sorted(RESOURCES.items()):
-    print("""colocation %(name)s-with-ib INFINITY: %(name)s ib0_up_clone""" % params)
     print("""order %(name)s-after-ib0-up Mandatory: ib0_up_clone %(name)s""" % params)
 
 # mouting Lustre targets must be serialized on a single host
