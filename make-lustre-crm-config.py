@@ -119,8 +119,8 @@ print(r"""
 rsc_template netmonitor-30sec ethmonitor \
   params repeat_count=3 repeat_interval=10 \
   op monitor interval=15s timeout=60s \
-  op start   interval=0s  timeout=60s \
-  op stop    interval=0s
+  op start   interval=0s  timeout=60s on-fail=stop \
+  op stop    interval=0s on-fail=stop
 """)
 
 
@@ -197,9 +197,9 @@ print(r"""
 #
 primitive ping ocf:pacemaker:ping \
     params name=ping dampen=5s multiplier=10 host_list="%s" \
-    op start timeout=120 \
+    op start timeout=120 on-fail=stop \
     op monitor timeout=120 interval=10 \
-    op stop timeout=20
+    op stop timeout=20 on-fail=stop
 
 clone ping_clone ping \
     meta globally-unique=false clone-node-max=1
@@ -215,8 +215,8 @@ print(r"""
 #
 rsc_template lustre-target-template ocf:heartbeat:Filesystem \
   op monitor interval=120 timeout=60 OCF_CHECK_LEVEL=10 \
-  op start   interval=0   timeout=300 \
-  op stop    interval=0   timeout=300
+  op start   interval=0   timeout=300 on-fail=fence \
+  op stop    interval=0   timeout=300 on-fail=fence
 """)
 for name, params in sorted(RESOURCES.items()):
     print(r"""
