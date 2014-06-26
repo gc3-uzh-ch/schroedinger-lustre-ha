@@ -1,8 +1,114 @@
 HA tests
 ========
 
+.. contents::
+
+New tests,  26 June 2014
+=========================
+
+Stonith enabled.
+
+Pacemaker configuration produced by `generator script make-lustre-crm-config.py <https://github.com/gc3-uzh-ch/schroedinger-lustre-ha/blob/master/make-lustre-crm-config.py>`__ (commit 8d5dfe8).
+
+
+FC failures
+-----------
+
+lustre-mds2
+"""""""""""
+
+unlink FC on lustre-mds2: **behaviour as expected**
+	- first FC, ok
+	- second FC
+		- resource (mgt) migrates correctly, node was fenced (power off)
+	
+power on lustre-mds2, without FC (because sysadmin forgot to plug FC cables)
+	- we run `crm resource migrate mgt lustre-mds2` (FC still unplugged)
+		- lustre-mds2 was fenced off again (unconsciously unexpected, but correct behaviour)
+	- FC plugged in, power on server
+		- resource are not migrated back automatically
+		- `crm resource migrate mgt lustre-mds2` success to migrate back
+
+
+lustre-oss5
+"""""""""""
+
+unlink FC on lustre-oss5: **behaviour as expected**
+	- first FC, ok, multipath acks missing path
+	- second FC, multipath acks no path to volume
+	- kernel says no I/O possible on device
+	- pacemaker primitive filesystem acknowledge impossible to do I/O on device
+	- node was fenced
+	- target moved to partner node lustre-oss6
+
+	
+stonith-lustre-oss5 was running on lustre-oss6, but decision to fence oss5 came from lustre-oss2 (crmd.3533@lustre-oss2.ften.es.hpcn.uzh.ch.7d782a67 on the following log)
+
+::
+
+	==> /var/log/messages <==
+	Jun 26 16:16:41 lustre-mds1 pacemakerd[3248]:   notice: crm_update_peer_state: pcmk_quorum_notification: Node lustre-oss5.ften.es.hpcn.uzh.ch[176250134] - sta
+	te is now lost (was member)
+	Jun 26 16:16:41 lustre-mds1 stonith-ng[3251]:   notice: remote_op_done: Operation poweroff of lustre-oss5.ften.es.hpcn.uzh.ch by lustre-oss6.ften.es.hpcn.uzh.
+	ch for crmd.3533@lustre-oss2.ften.es.hpcn.uzh.ch.7d782a67: OK
+	Jun 26 16:16:41 lustre-mds1 crmd[3255]:   notice: tengine_stonith_notify: Peer lustre-oss5.ften.es.hpcn.uzh.ch was terminated (poweroff) by lustre-oss6.ften.e
+	s.hpcn.uzh.ch for lustre-oss2.ften.es.hpcn.uzh.ch: OK (ref=7d782a67-1528-4d74-b2ff-02cfe8a37102) by client crmd.3533
+	Jun 26 16:16:45 lustre-mds1 attrd[3253]:   notice: attrd_peer_message: Processing sync-response from lustre-oss3.ften.es.hpcn.uzh.ch
+	Jun 26 16:17:32 lustre-mds1 kernel: Lustre: lustre-OST001a-osc-MDT0000: Connection restored to lustre-OST001a (at 10.130.93.23@o2ib)
+	Jun 26 16:18:25 lustre-mds1 kernel: Lustre: lustre-OST0012-osc-MDT0000: Connection restored to lustre-OST0012 (at 10.130.93.23@o2ib)
+	Jun 26 16:18:55 lustre-mds1 kernel: Lustre: lustre-OST000a-osc-MDT0000: Connection restored to lustre-OST000a (at 10.130.93.23@o2ib)
+	Jun 26 16:19:40 lustre-mds1 kernel: Lustre: lustre-OST0002-osc-MDT0000: Connection restored to lustre-OST0002 (at 10.130.93.23@o2ib)
+
+
+power on lustre-oss5, with a single FC plugged in
+	- resources are not migrated back
+	- `crm resource migrate ost{2,10,18,26} lustre-oss5` success to migrate back
+	
+
+InfiniBand
+----------
+
+lustre-oss5
+"""""""""""
+
+unplug InfiniBand cable: **behaviour as expected**
+	- ethmonitor acknowledge failure
+	- resource are migrated to failover partner
+	- node is NOT fenced
+	
+ethernet
+--------
+
+lustre-oss6
+"""""""""""
+
+Unplug ethernet cable: **behaviour as expected**
+	- ethmonitor acknowledge failure
+	- stonith primitive migrates from lustre-oss5 to lustre-mds2
+	- apart stonith primitive, nothing was fenced nor moved
+
+
+Reboot
+------
+
+
+lustre-oss5
+"""""""""""
+
+During normal condition, just run `reboot` on a server: **server fails a clean reboot**
+	- resources are migrated to failover partner oss6
+	- oss5 hangs during shutdown
+		- maybe InfiniBand modules are unloaded before lnet (lustre networking module)
+		
+Open points
+-----------
+
+- We get rid of MailTo primitives, need to substitute them with something more informative.
+- Why a server fails a normal reboot procedure?
+
+
 Schroedinger maintenance, 25 june 2014
---------------------------------------
+======================================
 
 Since
 - STONITH was disabled so far
