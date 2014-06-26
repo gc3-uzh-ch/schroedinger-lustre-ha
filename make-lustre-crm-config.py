@@ -284,12 +284,12 @@ for name, params in sorted(RESOURCES.items()):
         print("order %(name)s_after_mdt Optional: mdt %(name)s" % params)
 
 
-print (r"""
-primitive mail MailTo \
-        params email="root@localhost" subject="Lustre"
-clone mail_clone mail \
-        meta globally-unique=false
-""")
+# print (r"""
+# primitive mail MailTo \
+#         params email="root@localhost" subject="Lustre"
+# clone mail_clone mail \
+#         meta globally-unique=false
+#""")
 
 
 # ensure STONITH is enabled
